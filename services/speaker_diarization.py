@@ -254,6 +254,7 @@ def _fallback_single_speaker_diarization(audio_path: str) -> DiarizationResult:
 # Public API
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def diarize_audio(
     audio_path: str,
     method: str = "auto",
@@ -262,31 +263,27 @@ def diarize_audio(
     """
     Run speaker diarization on an audio file.
 
-    Args:
-        audio_path: Path to the audio file.
-        method: One of ["auto", "pyannote", "whisperx", "fallback"].
-                "auto" tries Pyannote first, then WhisperX, then fallback.
-        num_speakers: Optional hint for number of speakers.
-
-    Returns:
-        DiarizationResult with speaker segments, labels, and counts.
+    On memory-limited hosting, use the lightweight fallback
+    unless a model-based method is explicitly requested.
     """
     if not os.path.exists(audio_path):
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
     logger.info("Starting diarization (method=%s)...", method)
 
-    if method == "pyannote":
-        return run_pyannote_diarization(audio_path, num_speakers=num_speakers)
-    elif method == "whisperx":
-        return run_whisperx_diarization(audio_path)
-    elif method == "fallback":
+    if method == "fallback" or method == "auto":
+        logger.warning(
+            "Using lightweight single-speaker fallback to conserve memory."
+        )
         return _fallback_single_speaker_diarization(audio_path)
-    else:  # auto
-        result = run_pyannote_diarization(audio_path, num_speakers=num_speakers)
-        if result.speaker_count <= 1:
-            # Pyannote couldn't detect multiple speakers, try WhisperX
-            alt_result = run_whisperx_diarization(audio_path)
-            if alt_result.speaker_count > result.speaker_count:
-                return alt_result
-        return result
+
+    if method == "pyannote":
+        return run_pyannote_diarization(
+            audio_path,
+            num_speakers=num_speakers,
+        )
+
+    if method == "whisperx":
+        return run_whisperx_diarization(audio_path)
+
+    raise ValueError(f"Unsupported diarization method: {method}")
