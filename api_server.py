@@ -161,6 +161,7 @@ def _normalise_action_items_for_output(items: List[dict]) -> List[dict]:
             status = "Assigned"
         enriched = dict(it)
         enriched["person"] = person
+        enriched["owner"] = person
         enriched["task"] = task
         enriched["status"] = status
         # Keep priority, deadline, notes, etc. for richer display
